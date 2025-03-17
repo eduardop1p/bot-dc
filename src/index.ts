@@ -119,6 +119,9 @@ const chromePath = getChromeExecutablePath();
         }
         --numberClicksController;
       }
+      setTimeout(async () => {
+        await browser.close();
+      }, 20000);
       continue;
     } catch (err) { // eslint-disable-line
       console.log(err);
