@@ -69,7 +69,7 @@ const chromePath = getChromeExecutablePath();
   console.log();
   console.log('------------------ Bot rodando ------------------');
 
-  let isLoop = true;
+  const isLoop = true;
   while (isLoop) {
     const { browser, page } = await puppeteerConfig();
     try {
@@ -107,7 +107,8 @@ const chromePath = getChromeExecutablePath();
         await browser.close();
         continue;
       }
-      while (numberClicks) {
+      let numberClicksController = numberClicks;
+      while (numberClicksController) {
         for (const adsDiv of adsDivs) {
           await delay(50);
           const adsLink = await adsDiv.$('a');
@@ -116,9 +117,9 @@ const chromePath = getChromeExecutablePath();
             await adsLink.click();
           }
         }
-        --numberClicks;
+        --numberClicksController;
       }
-      isLoop = false;
+      continue;
     } catch (err) { // eslint-disable-line
       console.log(err);
       console.log('reabrindo navegador');
