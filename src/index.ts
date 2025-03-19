@@ -1,8 +1,10 @@
-import puppeteer from 'puppeteer';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import puppeteer, { Browser } from 'puppeteer';
 import { ElementHandle } from 'puppeteer';
 import path from 'node:path';
 import os from 'node:os';
-import fs from 'node:fs';
+import fs, { link } from 'node:fs';
 
 import readline from 'readline';
 
@@ -51,6 +53,7 @@ const chromePath = getChromeExecutablePath();
 
 (async () => {
   let searchQuery = '';
+  let links: string[] = [];
   let numberClicks = 0;
 
   const input = (question: string) => {
@@ -65,18 +68,26 @@ const chromePath = getChromeExecutablePath();
   console.log();
   searchQuery = String(await input('Qual a pesquisa? '));
   numberClicks = Number(await input('Quantidade de clicks: '));
+  links = String(await input('Links para não clicar: ')).trim().split(','); // eslint-disable-line
+  links = links.map(item =>
+    item.endsWith('/') ? item.slice(0, -1).trim() : item.trim()
+  );
   rl.close();
   console.log();
   console.log('------------------ Bot rodando ------------------');
 
   const isLoop = true;
   while (isLoop) {
-    const { browser, page } = await puppeteerConfig();
+    let browser: any = null;
     try {
+      const config = await puppeteerConfig();
+      browser = config.browser;
+      const page = config.page;
       await page.goto(
         `https://www.google.com/search?q=${searchQuery}&tbs=ad:1`,
         {
           waitUntil: 'networkidle2',
+          timeout: 30000,
         }
       );
       // const textareaSelector = '#APjFqb';
@@ -103,7 +114,7 @@ const chromePath = getChromeExecutablePath();
       // await page.waitForSelector(adsSelector);
       const adsDivs = await page.$$(adsSelector);
       if (!adsDivs.length) {
-        console.log('reabrindo navegador');
+        console.log('reabrindo navegador com novo proxy');
         await browser.close();
         continue;
       }
@@ -113,6 +124,24 @@ const chromePath = getChromeExecutablePath();
           await delay(50);
           const adsLink = await adsDiv.$('a');
           if (adsLink) {
+            const dataPcuAttribute = await page.evaluate(adsLink => {
+              const attribute = adsLink.getAttribute('data-pcu');
+              return attribute ? attribute.trim() : '';
+            }, adsLink);
+            let arrDataPcuAttribute = dataPcuAttribute.split(',');
+            arrDataPcuAttribute = arrDataPcuAttribute.map(item =>
+              item.endsWith('/') ? item.slice(0, -1).trim() : item.trim()
+            );
+            const containsAtLeastOne = links.some(item =>
+              arrDataPcuAttribute.includes(item)
+            );
+            if (containsAtLeastOne) {
+              console.log(
+                `Sua campanha foi encontrada: ${arrDataPcuAttribute.join(',')}, contornando ela...`
+              );
+              // https://webguiasvelcularpr.online, https://www.despachantecamargo.online, https://www.acessosdeguiiaspaaraveriificaar.site, https://www.guiasemissaofacilmente.com, https://veiculospr.transitorapidofacil.com, https://www.atndinteligentedeguia.store
+              continue;
+            }
             await page.keyboard.down('Control');
             await adsLink.click();
           }
@@ -121,11 +150,11 @@ const chromePath = getChromeExecutablePath();
       }
       setTimeout(async () => {
         await browser.close();
-      }, 20000);
+      }, 30000);
       continue;
     } catch (err) { // eslint-disable-line
       console.log(err);
-      console.log('reabrindo navegador');
+      console.log('reabrindo navegador com novo proxy');
       await browser.close();
       continue;
     }
