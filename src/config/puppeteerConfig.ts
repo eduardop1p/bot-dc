@@ -47,7 +47,20 @@ import { connect } from 'puppeteer-real-browser';
 export default async function puppeteerConfig() {
   const { browser, page } = await connect({
     headless: false,
-    args: ['--start-maximized'],
+    args: [
+      '--start-maximized',
+      // '--disable-gpu',
+      // '--disable-dev-shm-usage',
+      // '--disable-setuid-sandbox',
+      // '--no-first-run',
+      // '--no-sandbox',
+      // '--no-zygote',
+      // '--deterministic-fetch',
+      // '--disable-features=IsolateOrigins',
+      // '--disable-site-isolation-trials',
+      // '--disable-accelerated-2d-canvas',
+      // "--single-process",
+    ],
     // customConfig: {
     //   chromePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     //   userDataDir:
@@ -68,6 +81,9 @@ export default async function puppeteerConfig() {
   });
 
   await page.setViewport({ width, height });
+  await page.setCacheEnabled(false);
+  const cookies = await browser.cookies();
+  await browser.deleteCookie(...cookies);
 
   return { browser, page };
 }

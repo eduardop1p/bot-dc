@@ -68,6 +68,7 @@ const chromePath = getChromeExecutablePath();
   console.log();
   searchQuery = String(await input('Qual a pesquisa? '));
   numberClicks = Number(await input('Quantidade de clicks: '));
+  // https://emissao-das-guias-veiculos.lat, https://emitir-guias-sefz-2025.lat
   links = String(await input('Links para não clicar: ')).trim().split(','); // eslint-disable-line
   links = links.map(item =>
     item.endsWith('/') ? item.slice(0, -1).trim() : item.trim()
@@ -75,6 +76,7 @@ const chromePath = getChromeExecutablePath();
   rl.close();
   console.log();
   console.log('------------------ Bot rodando ------------------');
+  // searchQuery = encodeURIComponent(`site:ads.google.com ${searchQuery}`);
 
   const isLoop = true;
   while (isLoop) {
@@ -82,9 +84,16 @@ const chromePath = getChromeExecutablePath();
     try {
       const config = await puppeteerConfig();
       browser = config.browser;
+      if (!browser.connected) {
+        console.log('Navegador fechado inesperadamente.');
+        continue;
+      }
       const page = config.page;
       await page.goto(
+        // `https://www.google.com/search?q=${encodeURIComponent(`site:ads.google.com ("${searchQuery}")`)}`,
+        // `https://www.google.com/search?q=${encodeURIComponent(`${searchQuery}&tbs=ad:1`)}`,
         `https://www.google.com/search?q=${searchQuery}&tbs=ad:1`,
+        // `https://www.google.com/search?q=${searchQuery}`,
         {
           waitUntil: 'networkidle2',
           timeout: 30000,
@@ -106,7 +115,10 @@ const chromePath = getChromeExecutablePath();
         '#captcha-form'
       )) as ElementHandle<HTMLFormElement> | null;
       if (gElement && captchaForm) {
-        await browser.close();
+        if (browser && browser.connected) {
+          console.log('erro no captcha');
+          await browser.close();
+        }
         continue;
       }
 
@@ -115,7 +127,10 @@ const chromePath = getChromeExecutablePath();
       const adsDivs = await page.$$(adsSelector);
       if (!adsDivs.length) {
         console.log('reabrindo navegador com novo proxy');
-        await browser.close();
+        if (browser && browser.connected) {
+          console.log('erro nas divs');
+          await browser.close();
+        }
         continue;
       }
       let numberClicksController = numberClicks;
@@ -148,18 +163,43 @@ const chromePath = getChromeExecutablePath();
         }
         --numberClicksController;
       }
-      setTimeout(async () => {
-        await browser.close();
-      }, 30000);
+      // const timeId = setTimeout(async () => {
+      //   if (browser && browser.connected) {
+      //     try {
+      //       await browser.close();
+      //       clearTimeout(timeId);
+      //     } catch (err) {
+      //       console.log('erro no setTimeout: ');
+      //     }
+      //   }
+      // }, 30000);
+      waitNewIteration(30000, browser);
       continue;
     } catch (err) { // eslint-disable-line
       console.log(err);
       console.log('reabrindo navegador com novo proxy');
-      await browser.close();
+      console.log('erro no catch');
+      // Garante que o navegador seja fechado antes de continuar o loop
+      if (browser && browser.connected) {
+        try {
+          await browser.close();
+        } catch (closeErr) {
+          console.log('Erro ao fechar o navegador:', closeErr);
+        }
+      }
       continue;
     }
   }
 })();
+
+function waitNewIteration(ms: number, browser: any) {
+  return new Promise(resolve =>
+    setTimeout(() => {
+      browser.close();
+      resolve('closed');
+    }, ms)
+  );
+}
 
 // import readline from 'readline';
 
