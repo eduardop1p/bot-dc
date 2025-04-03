@@ -80,15 +80,19 @@ const chromePath = getChromeExecutablePath();
 
   const isLoop = true;
   while (isLoop) {
+    await delay(2000);
     let browser: any = null;
     try {
       const config = await puppeteerConfig();
+      if (!config || !config.browser || !config.page) {
+        continue;
+      }
       browser = config.browser;
+      const page = config.page;
       if (!browser.connected) {
         console.log('Navegador fechado inesperadamente.');
         continue;
       }
-      const page = config.page;
       await page.goto(
         // `https://www.google.com/search?q=${encodeURIComponent(`site:ads.google.com ("${searchQuery}")`)}`,
         // `https://www.google.com/search?q=${encodeURIComponent(`${searchQuery}&tbs=ad:1`)}`,
@@ -117,19 +121,19 @@ const chromePath = getChromeExecutablePath();
       if (gElement && captchaForm) {
         if (browser && browser.connected) {
           console.log('erro no captcha');
-          await browser.close();
+          browser.close();
         }
         continue;
       }
 
       const adsSelector = '[data-text-ad]';
-      // await page.waitForSelector(adsSelector);
+      await page.waitForSelector('body');
       const adsDivs = await page.$$(adsSelector);
       if (!adsDivs.length) {
         console.log('reabrindo navegador com novo proxy');
         if (browser && browser.connected) {
           console.log('erro nas divs');
-          await browser.close();
+          browser.close();
         }
         continue;
       }
@@ -166,7 +170,7 @@ const chromePath = getChromeExecutablePath();
       // const timeId = setTimeout(async () => {
       //   if (browser && browser.connected) {
       //     try {
-      //       await browser.close();
+      //       browser.close();
       //       clearTimeout(timeId);
       //     } catch (err) {
       //       console.log('erro no setTimeout: ');
@@ -182,7 +186,7 @@ const chromePath = getChromeExecutablePath();
       // Garante que o navegador seja fechado antes de continuar o loop
       if (browser && browser.connected) {
         try {
-          await browser.close();
+          browser.close();
         } catch (closeErr) {
           console.log('Erro ao fechar o navegador:', closeErr);
         }
@@ -194,8 +198,14 @@ const chromePath = getChromeExecutablePath();
 
 function waitNewIteration(ms: number, browser: any) {
   return new Promise(resolve =>
-    setTimeout(() => {
-      browser.close();
+    setTimeout(async () => {
+      if (browser && browser.connected) {
+        try {
+          await browser.close();
+        } catch (err) {
+          console.log('Erro ao fechar navegador em waitNewIteration:', err);
+        }
+      }
       resolve('closed');
     }, ms)
   );
@@ -221,7 +231,7 @@ function waitNewIteration(ms: number, browser: any) {
 //     headless: false,
 //   });
 
-//   const page = await browser.newPage();
+//   const page = browser.newPage();
 //   await page.authenticate({
 //     username: '18b45b183e191d3e4fbc', // Substitua pelo seu nome de usuário DataImpulse.
 //     password: 'f743e01b1543232f', // Substitua pela sua senha DataImpulse.
